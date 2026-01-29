@@ -19,18 +19,9 @@ import {
 } from "drizzle-zod";
 import { sessions } from "./sessions.schema";
 import { timestamps } from "../../utils/drizzleTimeStamps.util";
-
-// // timeStamps utilty
-
-// export const timestamps = {
-//   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
-//     .defaultNow()
-//     .notNull(),
-//   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
-//     .defaultNow()
-//     .notNull()
-//     .$onUpdate(() => new Date()),
-// };
+import { emailVerifications } from "./emailVerifications.schema";
+import { userRoles } from "./userRoles.schema";
+import { passwordResets } from "./passwordResets.schema";
 
 export const genderEnum = pgEnum("gender", ["male", "female", "others"]);
 
@@ -40,21 +31,9 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   avatar: text("avatar"),
-  // Consistent naming: TS is dateOfBirth, Postgres is date_of_birth
   dateOfBirth: date("date_of_birth", { mode: "date" }).notNull(),
   isVerified: boolean("is_verified").default(false).notNull(),
-  verifyingToken: text("verified_token"),
   gender: genderEnum("gender").notNull(),
-  verifyingTokenExpiry: timestamp("verifying_token_expiry", {
-    withTimezone: true,
-    mode: "date",
-  }),
-  refreshToken: text("refresh_token"),
-  passwordResetToken: text("password_reset_token"),
-  passwordResetExpiry: timestamp("password_reset_expiry", {
-    withTimezone: true,
-    mode: "date",
-  }),
   passwordChangedAt: timestamp("password_changed_at", {
     withTimezone: true,
     mode: "date",
@@ -93,6 +72,9 @@ export const userUpdateSchema = createUpdateSchema(users);
 
 // ----------------------------------------
 // user relations
-export const userRelation = relations(users, ({ many }) => ({
+export const userRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
+  passwordResets: many(passwordResets),
+  emailVerifications: many(emailVerifications),
+  userRoles: many(userRoles),
 }));

@@ -85,7 +85,7 @@ export const sessionUpdateSchema = createUpdateSchema(sessions);
 
 // -----------------------------------------------------------
 // Sessions Relations
-export const sessionRelation = relations(sessions, ({ one }) => ({
+export const sessionRelations = relations(sessions, ({ one }) => ({
   user: one(users, {
     fields: [sessions.userId],
     references: [users.id],

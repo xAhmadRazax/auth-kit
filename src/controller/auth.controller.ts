@@ -4,15 +4,17 @@ import { StatusCodes } from "http-status-codes";
 import { asyncHandler } from "../utils/asyncHandler.util";
 import { ApiResponse } from "../utils/apiResponse.util";
 import {
-  changePasswordService,
-  checkIdentifierAvailabilityService,
-  forgotPasswordService,
+  // changePasswordService,
+  // forgotPasswordService,
   loginService,
-  logoutService,
+  // logoutService,
   refreshTokenService,
+  // resetPasswordService,
+  // verifyPasswordResetTokenService,
+  checkIdentifierAvailabilityService,
   registerService,
-  resetPasswordService,
-  verifyPasswordResetTokenService,
+  sendVerificationEmailService,
+  verifyEmailService,
 } from "../services/auth.service";
 import { AppError } from "../utils/apiError.util";
 import { getExpiryDate } from "../utils/date.util";
@@ -40,14 +42,20 @@ export const checkIdentifierAvailability = asyncHandler(
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const { email, name, password, dateOfBirth, gender, avatar } = req.body;
   try {
-    const user = await registerService({
-      email,
-      name,
-      password,
-      avatar,
-      dateOfBirth,
-      gender,
-    });
+    const baseUrl = `${req.protocol}://${req.get("host")}${req.baseUrl}`;
+
+    const user = await registerService(
+      baseUrl,
+
+      {
+        email,
+        name,
+        password,
+        avatar,
+        dateOfBirth,
+        gender,
+      },
+    );
 
     ApiResponse.sendJSON(
       res,
@@ -111,164 +119,164 @@ export const login = asyncHandler(
   },
 );
 
-export const forgotPassword = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const { email } = req.body;
-    // console.log(req.protocol, req.baseUrl, req.get("host"));
+// export const forgotPassword = asyncHandler(
+//   async (req: Request, res: Response, next: NextFunction) => {
+//     const { email } = req.body;
+//     // console.log(req.protocol, req.baseUrl, req.get("host"));
 
-    const url = `${req.protocol}://${req.get("host")}${req.baseUrl}`;
+//     const url = `${req.protocol}://${req.get("host")}${req.baseUrl}`;
 
-    const data = await forgotPasswordService(email, url);
+//     const data = await forgotPasswordService(email, url);
 
-    ApiResponse.sendJSON(
-      res,
-      StatusCodes.OK,
-      "If an account with that email exists, we’ve sent a password reset link to it.",
-      {
-        resetToken: data?.token ?? "",
-        resetUrl: data?.url ?? "",
-      },
-    );
-  },
-);
+//     ApiResponse.sendJSON(
+//       res,
+//       StatusCodes.OK,
+//       "If an account with that email exists, we’ve sent a password reset link to it.",
+//       {
+//         resetToken: data?.token ?? "",
+//         resetUrl: data?.url ?? "",
+//       },
+//     );
+//   },
+// );
 
-export const verifyPasswordToken = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const { token } = req.params;
-    if (!token) {
-      throw new AppError(StatusCodes.UNAUTHORIZED, "Token is missing", {
-        errorCode: "ERR_MISSING_PASSWORD_RESET_TOKEN",
-      });
-    }
+// export const verifyPasswordToken = asyncHandler(
+//   async (req: Request, res: Response, next: NextFunction) => {
+//     const { token } = req.params;
+//     if (!token) {
+//       throw new AppError(StatusCodes.UNAUTHORIZED, "Token is missing", {
+//         errorCode: "ERR_MISSING_PASSWORD_RESET_TOKEN",
+//       });
+//     }
 
-    await verifyPasswordResetTokenService(token as string);
+//     await verifyPasswordResetTokenService(token as string);
 
-    ApiResponse.sendJSON(res, StatusCodes.OK, "Token is valid");
-  },
-);
+//     ApiResponse.sendJSON(res, StatusCodes.OK, "Token is valid");
+//   },
+// );
 
-export const resetPassword = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const { token } = req.params;
-    const { password } = req.body;
-    if (!token) {
-      throw new AppError(StatusCodes.UNAUTHORIZED, "Token is missing", {
-        errorCode: "ERR_MISSING_PASSWORD_RESET_TOKEN",
-      });
-    }
+// export const resetPassword = asyncHandler(
+//   async (req: Request, res: Response, next: NextFunction) => {
+//     const { token } = req.params;
+//     const { password } = req.body;
+//     if (!token) {
+//       throw new AppError(StatusCodes.UNAUTHORIZED, "Token is missing", {
+//         errorCode: "ERR_MISSING_PASSWORD_RESET_TOKEN",
+//       });
+//     }
 
-    const user = await resetPasswordService({
-      token: token as string,
-      password,
-    });
+//     const user = await resetPasswordService({
+//       token: token as string,
+//       password,
+//     });
 
-    ApiResponse.sendJSON(res, StatusCodes.OK, "Password Reset Successfully", {
-      user,
-    });
-  },
-);
+//     ApiResponse.sendJSON(res, StatusCodes.OK, "Password Reset Successfully", {
+//       user,
+//     });
+//   },
+// );
 
-export const changePassword = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const { currentPassword, newPassword } = req.body;
-    const { id } = req.user;
+// export const changePassword = asyncHandler(
+//   async (req: Request, res: Response, next: NextFunction) => {
+//     const { currentPassword, newPassword } = req.body;
+//     const { id } = req.user;
 
-    const ip =
-      (Array.isArray(req.headers["x-forwarded-for"])
-        ? req.headers["x-forwarded-for"][0]
-        : req.headers["x-forwarded-for"]) || req.socket.remoteAddress;
-    const device = req.headers["user-agent"];
+//     const ip =
+//       (Array.isArray(req.headers["x-forwarded-for"])
+//         ? req.headers["x-forwarded-for"][0]
+//         : req.headers["x-forwarded-for"]) || req.socket.remoteAddress;
+//     const device = req.headers["user-agent"];
 
-    const { user, accessToken, refreshToken } = await changePasswordService({
-      userId: id,
-      currentPassword,
-      newPassword,
-      ip: ip ?? "",
-      device: device || "",
-    });
+//     const { user, accessToken, refreshToken } = await changePasswordService({
+//       userId: id,
+//       currentPassword,
+//       newPassword,
+//       ip: ip ?? "",
+//       device: device || "",
+//     });
 
-    setAuthCookie(
-      res,
-      "refreshToken",
-      refreshToken,
-      ms(process.env.REFRESH_TOKEN_EXPIRY!),
-    );
+//     setAuthCookie(
+//       res,
+//       "refreshToken",
+//       refreshToken,
+//       ms(process.env.REFRESH_TOKEN_EXPIRY!),
+//     );
 
-    ApiResponse.sendJSON(
-      res,
-      StatusCodes.OK,
-      "user's password updated successfully.",
-      {
-        user,
-        accessToken,
-      },
-    );
-  },
-);
+//     ApiResponse.sendJSON(
+//       res,
+//       StatusCodes.OK,
+//       "user's password updated successfully.",
+//       {
+//         user,
+//         accessToken,
+//       },
+//     );
+//   },
+// );
 
-export const updateUser = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const { currentPassword, newPassword } = req.body;
-    const { id } = req.user;
+// export const updateUser = asyncHandler(
+//   async (req: Request, res: Response, next: NextFunction) => {
+//     const { currentPassword, newPassword } = req.body;
+//     const { id } = req.user;
 
-    const ip =
-      (Array.isArray(req.headers["x-forwarded-for"])
-        ? req.headers["x-forwarded-for"][0]
-        : req.headers["x-forwarded-for"]) || req.socket.remoteAddress;
-    const device = req.headers["user-agent"];
+//     const ip =
+//       (Array.isArray(req.headers["x-forwarded-for"])
+//         ? req.headers["x-forwarded-for"][0]
+//         : req.headers["x-forwarded-for"]) || req.socket.remoteAddress;
+//     const device = req.headers["user-agent"];
 
-    const { user, accessToken, refreshToken } = await changePasswordService({
-      userId: id,
-      currentPassword,
-      newPassword,
-      ip: ip ?? "",
-      device: device || "",
-    });
+//     const { user, accessToken, refreshToken } = await changePasswordService({
+//       userId: id,
+//       currentPassword,
+//       newPassword,
+//       ip: ip ?? "",
+//       device: device || "",
+//     });
 
-    setAuthCookie(
-      res,
-      "refreshToken",
-      refreshToken,
-      ms(process.env.REFRESH_TOKEN_EXPIRY!),
-    );
+//     setAuthCookie(
+//       res,
+//       "refreshToken",
+//       refreshToken,
+//       ms(process.env.REFRESH_TOKEN_EXPIRY!),
+//     );
 
-    ApiResponse.sendJSON(
-      res,
-      StatusCodes.OK,
-      "user's password updated successfully.",
-      {
-        user,
-        accessToken,
-      },
-    );
-  },
-);
+//     ApiResponse.sendJSON(
+//       res,
+//       StatusCodes.OK,
+//       "user's password updated successfully.",
+//       {
+//         user,
+//         accessToken,
+//       },
+//     );
+//   },
+// );
 
-export const logout = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const refreshToken = req.cookies.refreshToken;
-    if (!refreshToken) {
-      throw new AppError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        "Refresh Token not found",
-      );
-    }
+// export const logout = asyncHandler(
+//   async (req: Request, res: Response, next: NextFunction) => {
+//     const refreshToken = req.cookies.refreshToken;
+//     if (!refreshToken) {
+//       throw new AppError(
+//         StatusCodes.INTERNAL_SERVER_ERROR,
+//         "Refresh Token not found",
+//       );
+//     }
 
-    const token = refreshToken.split(".");
-    const { id } = req.user;
+//     const token = refreshToken.split(".");
+//     const { id } = req.user;
 
-    await logoutService({
-      userId: id,
-      token,
-    });
+//     await logoutService({
+//       userId: id,
+//       token,
+//     });
 
-    setAuthCookie(res, "refreshToken", "", 0);
+//     setAuthCookie(res, "refreshToken", "", 0);
 
-    ApiResponse.sendJSON(res, StatusCodes.OK, "logout user successfully", {
-      accessToken: "",
-    });
-  },
-);
+//     ApiResponse.sendJSON(res, StatusCodes.OK, "logout user successfully", {
+//       accessToken: "",
+//     });
+//   },
+// );
 
 export const refreshToken = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -317,5 +325,40 @@ export const refreshToken = asyncHandler(
     ApiResponse.sendJSON(res, StatusCodes.OK, "token refresh successfully", {
       accessToken,
     });
+  },
+);
+
+export const sendVerificationEmail = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { token } = req.params;
+    const { user } = req;
+
+    if (!token) {
+      throw new AppError(StatusCodes.UNAUTHORIZED, "Token is missing", {
+        errorCode: "ERR_MISSING_PASSWORD_RESET_TOKEN",
+      });
+    }
+    await sendVerificationEmailService(user, token as string);
+
+    ApiResponse.sendJSON(
+      res,
+      StatusCodes.OK,
+      "verifying email has been sent to your account.",
+    );
+  },
+);
+
+export const verifyEmail = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { token } = req.params;
+
+    if (!token) {
+      throw new AppError(StatusCodes.UNAUTHORIZED, "Token is missing", {
+        errorCode: "ERR_MISSING_PASSWORD_RESET_TOKEN",
+      });
+    }
+    await verifyEmailService(token as string);
+
+    ApiResponse.sendJSON(res, StatusCodes.OK, "User verified successfully");
   },
 );
