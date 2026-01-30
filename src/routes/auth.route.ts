@@ -9,10 +9,13 @@ import {
   sendVerificationEmail,
   verifyEmail,
   resetPassword,
-  // verifyPasswordToken,
+  verifyPasswordToken,
+  logout,
+  changePassword,
 } from "../controller/auth.controller";
 import { userInsertSchema } from "../db/schemas/users.schema";
 import {
+  ChangePasswordSchema,
   CheckIdentifierAvailabilitySchema,
   ForgotPasswordSchema,
   LoginUserSchema,
@@ -39,15 +42,21 @@ router
   .route("/forgot-password")
   .post(zodSyncSchemaValidator(ForgotPasswordSchema), forgotPassword);
 
-// router.route("/verify-password-reset-token/:token").get(verifyPasswordToken);
+router.route("/verify-password-reset-token/:token").get(verifyPasswordToken);
 
 router
   .route("/reset-password/:token")
   .post(zodSyncSchemaValidator(ResetPasswordSchema), resetPassword);
 
-router.route("/refresh-token").post(protect, refreshToken);
-
-router.post("/email/verification", protect, sendVerificationEmail);
 router.get("/email/verification/:token", verifyEmail);
+
+router.use(protect);
+
+router.route("/email/verification").post(sendVerificationEmail);
+router
+  .route("/change-password")
+  .post(zodSyncSchemaValidator(ChangePasswordSchema), changePassword);
+router.route("/refresh-token").post(refreshToken);
+router.route("/logout").post(logout);
 
 export { router };

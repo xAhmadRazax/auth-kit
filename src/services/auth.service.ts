@@ -314,116 +314,115 @@ export async function resetPasswordService({
   return { user: publicUser };
 }
 
-// export async function changePasswordService({
-//   userId,
-//   currentPassword,
-//   newPassword,
-//   device,
-//   ip,
-// }: {
-//   userId: string;
-//   newPassword: string;
-//   currentPassword: string;
-//   device: string;
-//   ip: string;
-// }) {
-//   // 01 get the user based on its id
-//   const [user] = await db.select().from(users).where(eq(users.id, userId));
+export async function changePasswordService({
+  userId,
+  currentPassword,
+  newPassword,
+  device,
+  ip,
+}: {
+  userId: string;
+  newPassword: string;
+  currentPassword: string;
+  device: string;
+  ip: string;
+}) {
+  // 01 get the user based on its id
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
 
-//   if (!user || !(await comparePassword(currentPassword, user.password))) {
-//     throw new AppError(
-//       StatusCodes.UNAUTHORIZED,
-//       "invalid password, please try again.",
-//       {
-//         errorCode: "ERR_INVALID_CREDENTIALS",
-//       },
-//     );
-//   }
+  if (!user || !(await comparePassword(currentPassword, user.password))) {
+    throw new AppError(
+      StatusCodes.UNAUTHORIZED,
+      "invalid password, please try again.",
+      {
+        errorCode: "ERR_INVALID_CREDENTIALS",
+      },
+    );
+  }
 
-//   const hashedPassword = await hashPassword(newPassword);
-//   const passwordChangedAt = new Date(Date.now() - 1000);
+  const hashedPassword = await hashPassword(newPassword);
+  const passwordChangedAt = new Date(Date.now() - 1000);
 
-//   const accessToken = generateAccessToken(user);
+  const accessToken = generateAccessToken(user);
 
-//   const { selector, verifier, hashedVerifier } = generateRefreshTokenPair();
+  const { selector, verifier, hashedVerifier } = generateRefreshTokenPair();
 
-//   if (!process.env.REFRESH_TOKEN_EXPIRY) {
-//     throw new AppError(
-//       StatusCodes.INTERNAL_SERVER_ERROR,
-//       "Refresh token Expiry not defined in .env",
-//       {
-//         errorCode: "ERR_JWT_EXPIRY",
-//       },
-//     );
-//   }
-//   const tokenExpiry = getExpiryDate(process.env.REFRESH_TOKEN_EXPIRY);
+  if (!process.env.REFRESH_TOKEN_EXPIRY) {
+    throw new AppError(
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      "Refresh token Expiry not defined in .env",
+      {
+        errorCode: "ERR_JWT_EXPIRY",
+      },
+    );
+  }
+  const tokenExpiry = getExpiryDate(process.env.REFRESH_TOKEN_EXPIRY);
 
-//   // 03 update the user
-//   // 04 clear users session
-//   const updatedUser = await db.transaction(async (tx) => {
-//     // updating the user with new password
-//     const updatedUser = await tx
-//       .update(users)
-//       .set({
-//         passwordChangedAt,
-//         password: hashedPassword,
-//       })
-//       .where(eq(users.id, userId))
-//       .returning();
+  // 03 update the user
+  // 04 clear users session
+  const updatedUser = await db.transaction(async (tx) => {
+    // updating the user with new password
+    const updatedUser = await tx
+      .update(users)
+      .set({
+        passwordChangedAt,
+        password: hashedPassword,
+      })
+      .where(eq(users.id, userId))
+      .returning();
 
-//     // deleting all session belonging to this user
+    // deleting all session belonging to this user
 
-//     await tx
-//       .update(sessions)
-//       .set({ isRevoked: true })
-//       .where(and(eq(sessions.userId, userId), eq(sessions.isRevoked, false)));
+    await tx
+      .update(sessions)
+      .set({ isRevoked: true })
+      .where(and(eq(sessions.userId, userId), eq(sessions.isRevoked, false)));
 
-//     // creating a new sessions of user
-//     await tx.insert(sessions).values({
-//       tokenFamily: selector,
-//       tokenHash: verifier,
-//       userId: user.id,
-//       ipAddress: ip,
-//       device,
-//       tokenExpiry: tokenExpiry,
-//     });
+    // creating a new sessions of user
+    await tx.insert(sessions).values({
+      tokenFamily: selector,
+      tokenHash: hashedVerifier,
+      userId: user.id,
+      ipAddress: ip,
+      device,
+      tokenExpiry: tokenExpiry,
+    });
 
-//     return updatedUser.at(0);
-//   });
+    return updatedUser.at(0);
+  });
 
-//   const { password: userPassword, ...publicUser } = updatedUser as PublicUser;
+  const { password: userPassword, ...publicUser } = updatedUser as PublicUser;
 
-//   return {
-//     user: publicUser,
-//     accessToken,
-//     refreshToken: `${selector}.${verifier}`,
-//   };
-// }
+  return {
+    user: publicUser,
+    accessToken,
+    refreshToken: `${selector}.${verifier}`,
+  };
+}
 
-// export async function logoutService({
-//   userId,
-//   token,
-// }: {
-//   userId: string;
-//   token: string;
-// }) {
-//   // const hashedToken = createHash("sha256").update(token).digest("hex");
-//   const [selector, verifier] = token.split(".");
-//   if (!selector || !verifier) return;
-//   const hashedVerifier = createHash("sha256").update(verifier).digest("hex");
-//   await db
-//     .update(sessions)
-//     .set({
-//       isRevoked: true,
-//     })
-//     .where(
-//       and(
-//         eq(sessions.userId, userId),
-//         eq(sessions.tokenFamily, selector),
-//         eq(sessions.tokenHash, hashedVerifier),
-//       ),
-//     );
-// }
+export async function logoutService({
+  userId,
+  token,
+}: {
+  userId: string;
+  token: string;
+}) {
+  const [selector, verifier] = token.split(".");
+  if (!selector || !verifier) return;
+  const hashedVerifier = createHash("sha256").update(verifier).digest("hex");
+  await db
+    .update(sessions)
+    .set({
+      isRevoked: true,
+    })
+    .where(
+      and(
+        eq(sessions.userId, userId),
+        eq(sessions.tokenFamily, selector),
+        eq(sessions.tokenHash, hashedVerifier),
+      ),
+    );
+}
 
 export async function refreshTokenService({
   refreshToken,

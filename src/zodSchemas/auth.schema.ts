@@ -28,3 +28,24 @@ export const ResetPasswordSchema = z.object({
     .string()
     .min(8, "invalid Password, password must have at least 8 character"),
 });
+
+export const ChangePasswordSchema = z
+  .object({
+    currentPassword: z
+      .string()
+      .min(
+        8,
+        "invalid Current Password, current password must have at least 8 character",
+      ),
+
+    newPassword: z
+      .string()
+      .min(
+        8,
+        "invalid New Password, New password must have at least 8 character",
+      ),
+  })
+  .refine((data) => data.currentPassword === data.newPassword, {
+    message: "New password cannot be same as current password",
+    path: ["newPassword"],
+  });

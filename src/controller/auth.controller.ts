@@ -4,10 +4,10 @@ import { StatusCodes } from "http-status-codes";
 import { asyncHandler } from "../utils/asyncHandler.util";
 import { ApiResponse } from "../utils/apiResponse.util";
 import {
-  // changePasswordService,
+  changePasswordService,
   forgotPasswordService,
   loginService,
-  // logoutService,
+  logoutService,
   refreshTokenService,
   resetPasswordService,
   verifyPasswordResetTokenService,
@@ -176,107 +176,106 @@ export const resetPassword = asyncHandler(
   },
 );
 
-// export const changePassword = asyncHandler(
-//   async (req: Request, res: Response, next: NextFunction) => {
-//     const { currentPassword, newPassword } = req.body;
-//     const { id } = req.user;
+export const changePassword = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { currentPassword, newPassword } = req.body;
+    const { id } = req.user;
 
-//     const ip =
-//       (Array.isArray(req.headers["x-forwarded-for"])
-//         ? req.headers["x-forwarded-for"][0]
-//         : req.headers["x-forwarded-for"]) || req.socket.remoteAddress;
-//     const device = req.headers["user-agent"];
+    const ip =
+      (Array.isArray(req.headers["x-forwarded-for"])
+        ? req.headers["x-forwarded-for"][0]
+        : req.headers["x-forwarded-for"]) || req.socket.remoteAddress;
+    const device = req.headers["user-agent"];
 
-//     const { user, accessToken, refreshToken } = await changePasswordService({
-//       userId: id,
-//       currentPassword,
-//       newPassword,
-//       ip: ip ?? "",
-//       device: device || "",
-//     });
+    const { user, accessToken, refreshToken } = await changePasswordService({
+      userId: id,
+      currentPassword,
+      newPassword,
+      ip: ip ?? "",
+      device: device || "",
+    });
 
-//     setAuthCookie(
-//       res,
-//       "refreshToken",
-//       refreshToken,
-//       ms(process.env.REFRESH_TOKEN_EXPIRY!),
-//     );
+    setAuthCookie(
+      res,
+      "refreshToken",
+      refreshToken,
+      ms(process.env.REFRESH_TOKEN_EXPIRY!),
+    );
 
-//     ApiResponse.sendJSON(
-//       res,
-//       StatusCodes.OK,
-//       "user's password updated successfully.",
-//       {
-//         user,
-//         accessToken,
-//       },
-//     );
-//   },
-// );
+    ApiResponse.sendJSON(
+      res,
+      StatusCodes.OK,
+      "user's password updated successfully.",
+      {
+        user,
+        accessToken,
+      },
+    );
+  },
+);
 
-// export const updateUser = asyncHandler(
-//   async (req: Request, res: Response, next: NextFunction) => {
-//     const { currentPassword, newPassword } = req.body;
-//     const { id } = req.user;
+export const updateUser = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { currentPassword, newPassword } = req.body;
+    const { id } = req.user;
 
-//     const ip =
-//       (Array.isArray(req.headers["x-forwarded-for"])
-//         ? req.headers["x-forwarded-for"][0]
-//         : req.headers["x-forwarded-for"]) || req.socket.remoteAddress;
-//     const device = req.headers["user-agent"];
+    const ip =
+      (Array.isArray(req.headers["x-forwarded-for"])
+        ? req.headers["x-forwarded-for"][0]
+        : req.headers["x-forwarded-for"]) || req.socket.remoteAddress;
+    const device = req.headers["user-agent"];
 
-//     const { user, accessToken, refreshToken } = await changePasswordService({
-//       userId: id,
-//       currentPassword,
-//       newPassword,
-//       ip: ip ?? "",
-//       device: device || "",
-//     });
+    const { user, accessToken, refreshToken } = await changePasswordService({
+      userId: id,
+      currentPassword,
+      newPassword,
+      ip: ip ?? "",
+      device: device || "",
+    });
 
-//     setAuthCookie(
-//       res,
-//       "refreshToken",
-//       refreshToken,
-//       ms(process.env.REFRESH_TOKEN_EXPIRY!),
-//     );
+    setAuthCookie(
+      res,
+      "refreshToken",
+      refreshToken,
+      ms(process.env.REFRESH_TOKEN_EXPIRY!),
+    );
 
-//     ApiResponse.sendJSON(
-//       res,
-//       StatusCodes.OK,
-//       "user's password updated successfully.",
-//       {
-//         user,
-//         accessToken,
-//       },
-//     );
-//   },
-// );
+    ApiResponse.sendJSON(
+      res,
+      StatusCodes.OK,
+      "user's password updated successfully.",
+      {
+        user,
+        accessToken,
+      },
+    );
+  },
+);
 
-// export const logout = asyncHandler(
-//   async (req: Request, res: Response, next: NextFunction) => {
-//     const refreshToken = req.cookies.refreshToken;
-//     if (!refreshToken) {
-//       throw new AppError(
-//         StatusCodes.INTERNAL_SERVER_ERROR,
-//         "Refresh Token not found",
-//       );
-//     }
+export const logout = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) {
+      throw new AppError(
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        "Refresh Token not found",
+      );
+    }
 
-//     const token = refreshToken.split(".");
-//     const { id } = req.user;
+    const { id } = req.user;
 
-//     await logoutService({
-//       userId: id,
-//       token,
-//     });
+    await logoutService({
+      userId: id,
+      token: refreshToken,
+    });
 
-//     setAuthCookie(res, "refreshToken", "", 0);
+    setAuthCookie(res, "refreshToken", "", 0);
 
-//     ApiResponse.sendJSON(res, StatusCodes.OK, "logout user successfully", {
-//       accessToken: "",
-//     });
-//   },
-// );
+    ApiResponse.sendJSON(res, StatusCodes.OK, "logout user successfully", {
+      accessToken: "",
+    });
+  },
+);
 
 export const refreshToken = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
