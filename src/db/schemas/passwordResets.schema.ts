@@ -29,7 +29,7 @@ export const passwordResets = pgTable("password_resets", {
     })
     .notNull(),
   token: text("token").notNull(),
-  expires_at: timestamp("expires_at", { withTimezone: true, mode: "date" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }),
   usedAT: timestamp("used_at", {
     withTimezone: true,
     mode: "date",

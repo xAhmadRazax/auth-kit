@@ -5,12 +5,12 @@ import { asyncHandler } from "../utils/asyncHandler.util";
 import { ApiResponse } from "../utils/apiResponse.util";
 import {
   // changePasswordService,
-  // forgotPasswordService,
+  forgotPasswordService,
   loginService,
   // logoutService,
   refreshTokenService,
-  // resetPasswordService,
-  // verifyPasswordResetTokenService,
+  resetPasswordService,
+  verifyPasswordResetTokenService,
   checkIdentifierAvailabilityService,
   registerService,
   sendVerificationEmailService,
@@ -119,62 +119,62 @@ export const login = asyncHandler(
   },
 );
 
-// export const forgotPassword = asyncHandler(
-//   async (req: Request, res: Response, next: NextFunction) => {
-//     const { email } = req.body;
-//     // console.log(req.protocol, req.baseUrl, req.get("host"));
+export const forgotPassword = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { email } = req.body;
+    // console.log(req.protocol, req.baseUrl, req.get("host"));
 
-//     const url = `${req.protocol}://${req.get("host")}${req.baseUrl}`;
+    const url = `${req.protocol}://${req.get("host")}${req.baseUrl}`;
 
-//     const data = await forgotPasswordService(email, url);
+    const data = await forgotPasswordService(email, url);
 
-//     ApiResponse.sendJSON(
-//       res,
-//       StatusCodes.OK,
-//       "If an account with that email exists, we’ve sent a password reset link to it.",
-//       {
-//         resetToken: data?.token ?? "",
-//         resetUrl: data?.url ?? "",
-//       },
-//     );
-//   },
-// );
+    ApiResponse.sendJSON(
+      res,
+      StatusCodes.OK,
+      "If an account with that email exists, we’ve sent a password reset link to it.",
+      {
+        resetToken: data?.token ?? "",
+        resetUrl: data?.url ?? "",
+      },
+    );
+  },
+);
 
-// export const verifyPasswordToken = asyncHandler(
-//   async (req: Request, res: Response, next: NextFunction) => {
-//     const { token } = req.params;
-//     if (!token) {
-//       throw new AppError(StatusCodes.UNAUTHORIZED, "Token is missing", {
-//         errorCode: "ERR_MISSING_PASSWORD_RESET_TOKEN",
-//       });
-//     }
+export const verifyPasswordToken = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { token } = req.params;
+    if (!token) {
+      throw new AppError(StatusCodes.UNAUTHORIZED, "Token is missing", {
+        errorCode: "ERR_MISSING_PASSWORD_RESET_TOKEN",
+      });
+    }
 
-//     await verifyPasswordResetTokenService(token as string);
+    await verifyPasswordResetTokenService(token as string);
 
-//     ApiResponse.sendJSON(res, StatusCodes.OK, "Token is valid");
-//   },
-// );
+    ApiResponse.sendJSON(res, StatusCodes.OK, "Token is valid");
+  },
+);
 
-// export const resetPassword = asyncHandler(
-//   async (req: Request, res: Response, next: NextFunction) => {
-//     const { token } = req.params;
-//     const { password } = req.body;
-//     if (!token) {
-//       throw new AppError(StatusCodes.UNAUTHORIZED, "Token is missing", {
-//         errorCode: "ERR_MISSING_PASSWORD_RESET_TOKEN",
-//       });
-//     }
+export const resetPassword = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { token } = req.params;
+    const { password } = req.body;
+    if (!token) {
+      throw new AppError(StatusCodes.UNAUTHORIZED, "Token is missing", {
+        errorCode: "ERR_MISSING_PASSWORD_RESET_TOKEN",
+      });
+    }
 
-//     const user = await resetPasswordService({
-//       token: token as string,
-//       password,
-//     });
+    const user = await resetPasswordService({
+      token: token as string,
+      password,
+    });
 
-//     ApiResponse.sendJSON(res, StatusCodes.OK, "Password Reset Successfully", {
-//       user,
-//     });
-//   },
-// );
+    ApiResponse.sendJSON(res, StatusCodes.OK, "Password Reset Successfully", {
+      user,
+    });
+  },
+);
 
 // export const changePassword = asyncHandler(
 //   async (req: Request, res: Response, next: NextFunction) => {

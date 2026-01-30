@@ -1,5 +1,8 @@
 import * as Brevo from "@getbrevo/brevo";
-import { getVerificationEmailTemplate } from "./emailTemplate.util";
+import {
+  getPasswordResetEmailTemplate,
+  getVerificationEmailTemplate,
+} from "./emailTemplate.util";
 
 export class EmailService {
   private apiInstance: Brevo.TransactionalEmailsApi;
@@ -30,6 +33,22 @@ export class EmailService {
     }
   }
 
+  async sendPasswordReset(name: string, to: string, url: string) {
+    const template = getPasswordResetEmailTemplate(name, url);
+    const email = {
+      subject: template.subject,
+      htmlContent: template.html,
+      sender: { name: "Auth-kit", email: "muhammad.ahmad.raza789@gmail.com" },
+      to: [{ email: to }],
+    };
+
+    try {
+      return await this.apiInstance.sendTransacEmail(email);
+    } catch (error) {
+      console.error("Brevo Error:", error);
+      throw error;
+    }
+  }
   static init() {
     return new EmailService();
   }

@@ -18,7 +18,7 @@ import {
 // import { password, SHA256 } from "bun";
 import { createHash, randomBytes } from "node:crypto";
 import { EmailService } from "../utils/Email";
-import { emailVerifications } from "../db/schema";
+import { emailVerifications, passwordResets } from "../db/schema";
 
 export async function checkIdentifierAvailabilityService({
   email,
@@ -184,125 +184,135 @@ export async function loginService({
   };
 }
 
-// export async function forgotPasswordService(email: string, url: string) {
-//   const [user] = await db
-//     .select()
-//     .from(users)
-//     .where(eq(users.email, email.toLowerCase()));
+export async function forgotPasswordService(email: string, url: string) {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email.toLowerCase()));
 
-//   if (!user) {
-//     return;
-//   }
+  if (!user) {
+    return;
+  }
 
-//   // 01 generate passwordResetToken
-//   const passwordResetToken = generateCryptoToken();
+  // 01 generate passwordResetToken
+  // 02 hash token
 
-//   // 02 hash token
-//   const hashedPasswordResetToken = encryptCryptoToken(
-//     passwordResetToken,
-//     "sha256",
-//   );
+  const { verifier, hashedVerifier } = generateVerifierAndHashedVerifier();
 
-//   const resetUrl = `${url}/verify-password-reset-token/${hashedPasswordResetToken}`;
+  const resetUrl = `${url}/verify-password-reset-token/${verifier}`;
 
-//   // 03 save the hashed token onto db
-//   const passwordResetExpiry = getExpiryDate("15m");
+  // 03 save the hashed token onto db
+  const passwordResetExpiry = getExpiryDate("15m");
 
-//   await db.update(users).set({
-//     passwordResetToken: hashedPasswordResetToken,
-//     passwordResetExpiry,
-//   });
+  await db.insert(passwordResets).values({
+    userId: user.id,
+    token: hashedVerifier,
+    expiresAt: getExpiryDate("15m"),
+  });
 
-//   // TODO: create an email
-//   // 04 send user email with raw token
+  // 04 send user email with hashed token
 
-//   return {
-//     url: resetUrl,
-//     token: passwordResetToken,
-//   };
-// }
+  await EmailService.init().sendPasswordReset(user.name, user.email, resetUrl);
 
-// export async function verifyPasswordResetTokenService(token: string) {
-//   const hashedPasswordRefreshToken = encryptCryptoToken(token, "sha256");
+  return {
+    url: resetUrl,
+    token: hashedVerifier,
+  };
+}
 
-//   const [user] = await db
-//     .select()
-//     .from(users)
-//     .where(
-//       and(
-//         eq(users.passwordResetToken, hashedPasswordRefreshToken),
-//         gt(users.passwordResetExpiry, new Date()),
-//       ),
-//     );
+export async function verifyPasswordResetTokenService(token: string) {
+  const hashedPasswordRefreshToken = encryptCryptoToken(token, "sha256");
 
-//   if (!user) {
-//     throw new AppError(
-//       StatusCodes.UNAUTHORIZED,
-//       "Token is invalid or has expired",
-//       {
-//         errorCode: "ERR_PASSWORD_RESET_TOKEN",
-//       },
-//     );
-//   }
-// }
+  const [data] = await db
+    .select()
+    .from(users)
+    .innerJoin(passwordResets, eq(passwordResets.userId, users.id))
+    .where(
+      and(
+        eq(passwordResets.token, hashedPasswordRefreshToken),
+        isNull(passwordResets.usedAT),
+        gt(passwordResets.expiresAt, new Date()),
+      ),
+    );
 
-// export async function resetPasswordService({
-//   password,
-//   token,
-// }: {
-//   token: string;
-//   password: string;
-// }) {
-//   // 01 hashed the token
-//   const hashedPasswordRefreshToken = encryptCryptoToken(token, "sha256");
-//   // 02 find user
-//   const [user] = await db
-//     .select()
-//     .from(users)
-//     .where(
-//       and(
-//         eq(users.passwordResetToken, hashedPasswordRefreshToken),
-//         gt(users.passwordResetExpiry, new Date()),
-//       ),
-//     );
+  if (!data?.users || !data?.password_resets) {
+    throw new AppError(
+      StatusCodes.UNAUTHORIZED,
+      "Token is invalid or has expired",
+      {
+        errorCode: "ERR_PASSWORD_RESET_TOKEN",
+      },
+    );
+  }
+}
 
-//   if (!user) {
-//     throw new AppError(
-//       StatusCodes.UNAUTHORIZED,
-//       "Token is invalid or has expired",
-//       {
-//         errorCode: "ERR_PASSWORD_RESET_TOKEN",
-//       },
-//     );
-//   }
+export async function resetPasswordService({
+  password,
+  token,
+}: {
+  token: string;
+  password: string;
+}) {
+  // 01 hashed the token
+  const hashedPasswordRefreshToken = encryptCryptoToken(token, "sha256");
+  // 02 find user
+  const [data] = await db
+    .select()
+    .from(users)
+    .innerJoin(passwordResets, eq(passwordResets.userId, users.id))
+    .where(
+      and(
+        eq(passwordResets.token, hashedPasswordRefreshToken),
+        isNull(passwordResets.usedAT),
+        gt(passwordResets.expiresAt, new Date()),
+      ),
+    );
 
-//   // 03 hash password
-//   const hashedPassword = await hashPassword(password);
+  if (!data?.users || !data?.password_resets) {
+    throw new AppError(
+      StatusCodes.UNAUTHORIZED,
+      "Token is invalid or has expired",
+      {
+        errorCode: "ERR_PASSWORD_RESET_TOKEN",
+      },
+    );
+  }
 
-//   // 04 update user
+  // 03 hash password
+  const hashedPassword = await hashPassword(password);
 
-//   const [updatedUser] = await db
-//     .update(users)
-//     .set({
-//       password: hashedPassword,
-//       passwordChangedAt: new Date(Date.now() - 1000),
-//       passwordResetExpiry: null,
-//       passwordResetToken: null,
-//     })
-//     .returning();
+  // 04 update user
 
-//   // 05 since we have reset the password we need to revoke all the
-//   // session of the current user logging out user from all devices
+  const updatedUser = await db.transaction(async (tx) => {
+    await tx.update(passwordResets).set({
+      // why we are doing this -1000 thingy because saving to db takes time
+      usedAT: new Date(Date.now() - 1000),
+    });
 
-//   await db
-//     .update(sessions)
-//     .set({ isRevoked: true })
-//     .where(and(eq(sessions.userId, user.id), eq(sessions.isRevoked, false)));
+    const [updatedUser] = await tx
+      .update(users)
+      .set({
+        password: hashedPassword,
+        passwordChangedAt: new Date(Date.now() - 1000),
+      })
+      .returning();
 
-//   const { password: userPassword, ...publicUser } = updatedUser as PublicUser;
+    // 05 since we have reset the password we need to revoke all the
+    // session of the current user logging out user from all devices
 
-//   return { user: publicUser };
-// }
+    await tx
+      .update(sessions)
+      .set({ isRevoked: true })
+      .where(
+        and(eq(sessions.userId, data.users.id), eq(sessions.isRevoked, false)),
+      );
+
+    return updatedUser;
+  });
+  const { password: userPassword, ...publicUser } = updatedUser as PublicUser;
+
+  return { user: publicUser };
+}
 
 // export async function changePasswordService({
 //   userId,
@@ -648,7 +658,7 @@ export async function verifyEmailService(token: string) {
     await tx
       .update(emailVerifications)
       .set({
-        verified_at: new Date(),
+        verified_at: new Date(Date.now() - 1000),
       })
       .where(eq(emailVerifications.id, result.email_verifications.id));
   });
